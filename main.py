@@ -1,22 +1,21 @@
 from lxml import etree
+import statistics
+from datetime import datetime
+
+FILE_PATH = "C:\\Users\\Angel\\Documents\\TRADING\\STRATEGIES\\BUY-SELL-GBPJPY\\BAJISTA\\Statement.htm"
 
 trades = []
+duraciones_horas = []
 
-# Carga el archivo .htm
-with open("C:\\Users\Angel\Documents\TRADING\STRATEGIES\BUY-SELL-GBPJPY\BAJISTA\Statement.htm", "r",
-          encoding="utf-8") as f:
+with open(FILE_PATH, "r", encoding="utf-8") as f:
     contenido = f.read()
 
-# Parseamos el contenido HTML
 parser = etree.HTMLParser()
 arbol = etree.HTML(contenido, parser)
 
-# Seleccionamos todas las filas tr
 filas = arbol.xpath("//tr")
 
-# Iteramos cada fila y extraemos el td número 14 (índice XPath empieza en 1)
 for i, fila in enumerate(filas, start=1):
-    # Extraemos el td[14]
     td14 = fila.xpath("td[14]/text()")
 
     try:
@@ -24,6 +23,16 @@ for i, fila in enumerate(filas, start=1):
         pass
     except:
         continue
+
+    celdas = fila.findall('td')
+    if len(celdas) >= 9:
+        try:
+            fecha_inicio = datetime.strptime(celdas[1].text.strip(), "%Y.%m.%d %H:%M:%S")
+            fecha_cierre = datetime.strptime(celdas[8].text.strip(), "%Y.%m.%d %H:%M:%S")
+            duracion = (fecha_cierre - fecha_inicio).total_seconds() / 3600  # en horas
+            duraciones_horas.append(duracion)
+        except:
+            print(f"Error procesando fila")
 
     trades.append(float(td14[0]))
 
@@ -68,5 +77,18 @@ def calcular_promedios_rachas(trades):
 resultado = calcular_promedios_rachas(trades)
 print("Promedio de trades ganadores consecutivos:", resultado['promedio_ganadoras'])
 print("Promedio de trades perdedores consecutivos:", resultado['promedio_perdedoras'])
+
+print("")
 print("Racha ganadora más larga:", resultado['racha_ganadora_max'])
 print("Racha perdedora más larga:", resultado['racha_perdedora_max'])
+
+print("")
+if duraciones_horas:
+    promedio = statistics.mean(duraciones_horas)
+    minimo = min(duraciones_horas)
+    maximo = max(duraciones_horas)
+    print(f"Duración promedio de los trades: {promedio:.2f} horas")
+    print(f"Duración mínima: {minimo:.2f} horas")
+    print(f"Duración máxima: {maximo:.2f} horas")
+else:
+    print("No se encontraron duraciones válidas.")
